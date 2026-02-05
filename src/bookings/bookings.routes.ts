@@ -35,14 +35,19 @@ bookingsRouter.post('/', async (req, res) => {
   const totalCost = days * rentPerDay;
 
   try {
-    return res.status(201).json({
-      booking: booking.id,
-      carName: booking.carName,
-      rentPerDay: booking.rentPerDay,
-      totalCost,
-      status: booking.status,
-      createdAt: booking.createdAt,
-    });
+    return res
+      .status(201)
+      .json({
+        booking: {
+          id: booking.id,
+          carName: booking.carName,
+          days: booking.days,
+          rentPerDay: booking.rentPerDay,
+          totalCost,
+          status: booking.status,
+          createdAt: booking.createdAt,
+        },
+      });
   } catch (e) {
     res.status(500).json({ error: 'Internal server error' });
   }
