@@ -130,3 +130,94 @@ bookingsRouter.post('/', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+bookingsRouter.put('/:bookingId', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const userId = req.user!.id;
+    const { carName, days, rentPerDay, status } = req.body;
+
+    // fetch booking
+    const result = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId));
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const booking = result[0];
+
+    // ownership check
+    if (booking.userId !== userId) {
+      return res
+        .status(403)
+        .json({ error: 'You are not allowed to update this booking' });
+    }
+
+    if (status && (carName || days || rentPerDay)) {
+      return res.status(400).json({ error: 'Invalid inputs' });
+    }
+
+    // update status
+    if (status) {
+      if (!['booked', 'completed', 'cancelled'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid inputs' });
+      }
+
+      const [updated] = await db
+        .update(bookings)
+        .set({ status })
+        .where(eq(bookings.id, bookingId))
+        .returning();
+
+      return res.status(200).json({
+        booking: {
+          id: updated.id,
+          carName: updated.carName,
+          days: updated.days,
+          rentPerDay: updated.rentPerDay,
+          totalCost: updated.days * updated.rentPerDay,
+          status: updated.status,
+          createdAt: updated.createdAt,
+        },
+      });
+    }
+
+    if (!carName || !days || !rentPerDay) {
+      return res.status(400).json({ error: 'Invalid inputs' });
+    }
+
+    if (
+      typeof days !== 'number' ||
+      typeof rentPerDay !== 'number' ||
+      days <= 0 ||
+      days >= 365 ||
+      rentPerDay > 2000 ||
+      rentPerDay <= 0
+    ) {
+      return res.status(400).json({ error: 'Invalid inputs' });
+    }
+
+    const [updated] = await db
+      .update(bookings)
+      .set({ carName, days, rentPerDay })
+      .where(eq(bookings.id, bookingId))
+      .returning();
+
+    return res.status(200).json({
+      booking: {
+        id: updated.id,
+        carName: updated.carName,
+        days: updated.days,
+        rentPerDay: updated.rentPerDay,
+        totalCost: updated.days * updated.rentPerDay,
+        status: updated.status,
+        createdAt: updated.createdAt,
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
