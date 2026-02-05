@@ -76,3 +76,9 @@ authRouter.post('/login', async (req, res) => {
     .status(200)
     .json({ success: true, data: { message: 'Login successful', token } });
 });
+
+authRouter.post('/logout', (req, res) => {
+  return res.status(200).json({
+    message: 'Logged out successfully',
+  });
+});

@@ -221,3 +221,35 @@ bookingsRouter.put('/:bookingId', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+bookingsRouter.delete('/:bookingId', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const userId = req.user!.id;
+
+    const result = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId));
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const booking = result[0];
+
+    if (booking.userId !== userId) {
+      return res
+        .status(403)
+        .json({ error: 'You are not allowed to delete this booking' });
+    }
+
+    await db.delete(bookings).where(eq(bookings.id, bookingId));
+
+    return res.status(200).json({
+      message: 'Booking deleted successfully',
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
