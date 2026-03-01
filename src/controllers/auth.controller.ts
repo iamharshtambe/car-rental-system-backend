@@ -9,7 +9,8 @@ export async function signup(req: Request, res: Response) {
   if (!parsed.success) {
     return res.status(400).json({
       success: false,
-      error: parsed.error.issues[0]?.message,
+      message: parsed.error.issues.map((issue) => issue.message),
+      data: null,
     });
   }
 
@@ -18,9 +19,11 @@ export async function signup(req: Request, res: Response) {
   const existingUser = await prisma.user.findUnique({ where: { username } });
 
   if (existingUser) {
-    return res
-      .status(400)
-      .json({ success: false, error: 'User already exists' });
+    return res.status(400).json({
+      success: false,
+      message: 'User already exists',
+      data: null,
+    });
   }
 
   const hashedPassword = await hashPassword(password);
@@ -33,6 +36,8 @@ export async function signup(req: Request, res: Response) {
   return res.status(201).json({
     success: true,
     message: 'User created successfully',
-    userId: user.id,
+    data: {
+      userId: user.id,
+    },
   });
 }
