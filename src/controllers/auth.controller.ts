@@ -15,9 +15,9 @@ export async function signup(req: Request, res: Response) {
     });
   }
 
-  const { username, password } = parsed.data;
+  const { email, password } = parsed.data;
 
-  const existingUser = await prisma.user.findUnique({ where: { username } });
+  const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {
     return res.status(400).json({
@@ -30,7 +30,7 @@ export async function signup(req: Request, res: Response) {
   const hashedPassword = await hashPassword(password);
 
   const user = await prisma.user.create({
-    data: { username, password: hashedPassword },
+    data: { email, password: hashedPassword },
     select: { id: true },
   });
 
@@ -54,9 +54,12 @@ export async function login(req: Request, res: Response) {
     });
   }
 
-  const { username, password } = parsed.data;
+  const { email, password } = parsed.data;
 
-  const user = await prisma.user.findUnique({ where: { username } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, password: true },
+  });
 
   if (!user) {
     return res.status(401).json({
@@ -76,7 +79,7 @@ export async function login(req: Request, res: Response) {
     });
   }
 
-  const token = generatetoken(user.id, user.username);
+  const token = generatetoken(user.id, user.email);
 
   return res.status(200).json({
     success: true,
