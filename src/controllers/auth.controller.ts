@@ -1,18 +1,43 @@
 import type { Request, Response } from 'express';
 import { loginSchema, signupSchema } from '../validators/auth.validator';
 import { prisma } from '../lib/prisma';
-import { comparePassword, hashPassword } from '../utils/hash';
-import { generatetoken } from '../utils/jwt';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+function respond(
+  res: Response,
+  status: number,
+  success: boolean,
+  message: string,
+  data: unknown = null,
+) {
+  return res.status(status).json({ success, message, data });
+}
+
+function generateToken(userId: string, email: string) {
+  return jwt.sign({ userId, email }, process.env.JWT_SECRET!, {
+    expiresIn: '1d',
+  });
+}
+
+async function hashPassword(password: string) {
+  return bcrypt.hash(password, 10);
+}
+
+async function comparePassword(password: string, hash: string) {
+  return bcrypt.compare(password, hash);
+}
 
 export async function signup(req: Request, res: Response) {
   const parsed = signupSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    return res.status(400).json({
-      success: false,
-      message: parsed.error.issues.map((issue) => issue.message),
-      data: null,
-    });
+    return respond(
+      res,
+      400,
+      false,
+      parsed.error.issues.map((issue) => issue.message).join(', '),
+    );
   }
 
   const { email, password } = parsed.data;
@@ -20,26 +45,16 @@ export async function signup(req: Request, res: Response) {
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {
-    return res.status(400).json({
-      success: false,
-      message: 'User already exists',
-      data: null,
-    });
+    return respond(res, 400, false, 'User already exists');
   }
 
-  const hashedPassword = await hashPassword(password);
-
   const user = await prisma.user.create({
-    data: { email, password: hashedPassword },
+    data: { email, password: await hashPassword(password) },
     select: { id: true },
   });
 
-  return res.status(201).json({
-    success: true,
-    message: 'User created successfully',
-    data: {
-      userId: user.id,
-    },
+  return respond(res, 201, true, 'User created successfully', {
+    userId: user.id,
   });
 }
 
@@ -47,11 +62,12 @@ export async function login(req: Request, res: Response) {
   const parsed = loginSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    return res.status(400).json({
-      success: false,
-      message: parsed.error.issues.map((issue) => issue.message),
-      data: null,
-    });
+    return respond(
+      res,
+      400,
+      false,
+      parsed.error.issues.map((issue) => issue.message).join(', '),
+    );
   }
 
   const { email, password } = parsed.data;
@@ -61,31 +77,14 @@ export async function login(req: Request, res: Response) {
     select: { id: true, email: true, password: true },
   });
 
-  if (!user) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid credentials',
-      data: null,
-    });
-  }
-
-  const isPasswordValid = await comparePassword(password, user.password);
+  const isPasswordValid =
+    user && (await comparePassword(password, user.password));
 
   if (!isPasswordValid) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid credentials',
-      data: null,
-    });
+    return respond(res, 401, false, 'Invalid credentials');
   }
 
-  const token = generatetoken(user.id, user.email);
-
-  return res.status(200).json({
-    success: true,
-    message: 'User logged in successfully',
-    data: {
-      token,
-    },
+  return respond(res, 200, true, 'User logged in successfully', {
+    token: generateToken(user.id, user.email),
   });
 }
