@@ -55,3 +55,81 @@ export async function createBooking(req: Request, res: Response) {
     totalCost,
   });
 }
+
+export async function getBookings(req: Request, res: Response) {
+  if (!req.user) {
+    return respond(res, 401, false, 'Unauthorized');
+  }
+
+  const { bookingId, summary } = req.query;
+
+  // summary mode
+  if (summary === 'true') {
+    const bookings = await prisma.booking.findMany({
+      where: {
+        userId: req.user.userId,
+        status: { in: ['booked', 'completed'] },
+      },
+      select: { days: true, rentPerDay: true },
+    });
+
+    let totalAmountSpent = 0;
+    for (const booking of bookings) {
+      totalAmountSpent += booking.days * booking.rentPerDay;
+    }
+
+    return respond(res, 200, true, 'Booking summary', {
+      userId: req.user.userId,
+      email: req.user.email,
+      totalBookings: bookings.length,
+      totalAmountSpent,
+    });
+  }
+
+  // single booking mode
+  if (bookingId) {
+    const booking = await prisma.booking.findFirst({
+      where: {
+        id: String(bookingId),
+        userId: req.user.userId,
+      },
+      select: {
+        id: true,
+        carName: true,
+        days: true,
+        rentPerDay: true,
+        status: true,
+      },
+    });
+
+    if (!booking) {
+      return respond(res, 404, false, 'Booking not found');
+    }
+
+    return respond(res, 200, true, 'Booking fetched', {
+      ...booking,
+      totalCost: booking.days * booking.rentPerDay,
+    });
+  }
+
+  // normal list mode
+  const bookings = await prisma.booking.findMany({
+    where: {
+      userId: req.user.userId,
+    },
+    select: {
+      id: true,
+      carName: true,
+      days: true,
+      rentPerDay: true,
+      status: true,
+    },
+  });
+
+  const formatted = bookings.map((b) => ({
+    ...b,
+    totalCost: b.days * b.rentPerDay,
+  }));
+
+  return respond(res, 200, true, 'Bookings fetched', formatted);
+}
