@@ -133,3 +133,27 @@ export async function getBookings(req: Request, res: Response) {
 
   return respond(res, 200, true, 'Bookings fetched', formatted);
 }
+
+export async function deleteBooking(req: Request, res: Response) {
+  if (!req.user) {
+    return respond(res, 401, false, 'Unauthorized');
+  }
+
+  const bookingId = req.params.bookingId as string;
+
+  const existingBooking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+  });
+
+  if (!existingBooking) {
+    return respond(res, 404, false, 'Booking not found');
+  }
+
+  if (existingBooking.userId !== req.user.userId) {
+    return respond(res, 403, false, 'Bookling does not belong to user');
+  }
+
+  await prisma.booking.delete({ where: { id: bookingId } });
+
+  return respond(res, 200, true, 'Booking deleted successfully');
+}
