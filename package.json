@@ -1,5 +1,5 @@
 {
-  "name": "car-rental-system-backend",
+  "name": "rentify-api",
   "module": "index.ts",
   "type": "module",
   "private": true,

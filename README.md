@@ -1,4 +1,4 @@
-# Car Rental System Backend
+# Rentify API
 
 A RESTful backend API for a **Car Rental System** built using **Express, PostgreSQL, Prisma, Zod, and JWT authentication**.
 
@@ -8,7 +8,7 @@ The project demonstrates authentication, authorization, database modeling, and c
 
 ## Tech Stack
 
-- **Node.js**
+- **Bun**
 - **Express**
 - **PostgreSQL**
 - **Prisma ORM**
