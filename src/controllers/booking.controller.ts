@@ -1,5 +1,8 @@
 import type { Request, Response } from 'express';
-import { bookingSchema } from '../validators/booking.validator';
+import {
+  createBookingSchema,
+  updateBookingSchema,
+} from '../validators/booking.validator';
 import { prisma } from '../lib/prisma';
 
 function respond(
@@ -17,7 +20,7 @@ export async function createBooking(req: Request, res: Response) {
     return respond(res, 401, false, 'Unauthorized');
   }
 
-  const parsed = bookingSchema.safeParse(req.body);
+  const parsed = createBookingSchema.safeParse(req.body);
 
   if (!parsed.success) {
     return respond(
@@ -134,6 +137,53 @@ export async function getBookings(req: Request, res: Response) {
   return respond(res, 200, true, 'Bookings fetched', formatted);
 }
 
+export async function updateBooking(req: Request, res: Response) {
+  if (!req.user) {
+    return respond(res, 401, false, 'Unauthorized');
+  }
+
+  const bookingId = req.params.bookingId as string;
+  const parsed = updateBookingSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return respond(
+      res,
+      400,
+      false,
+      parsed.error.issues.map((i) => i.message).join(', '),
+    );
+  }
+
+  const existingBooking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+  });
+
+  if (!existingBooking) {
+    return respond(res, 404, false, 'Booking not found');
+  }
+
+  if (existingBooking.userId !== req.user.userId) {
+    return respond(res, 403, false, 'Bookling does not belong to user');
+  }
+
+  const updatedBooking = await prisma.booking.update({
+    where: { id: bookingId },
+    data: parsed.data,
+    select: {
+      id: true,
+      carName: true,
+      days: true,
+      rentPerDay: true,
+      status: true,
+    },
+  });
+
+  return respond(res, 200, true, 'Booking updated successfully', {
+    ...updatedBooking,
+    totalCost: updatedBooking.days * updatedBooking.rentPerDay,
+  });
+}
+
 export async function deleteBooking(req: Request, res: Response) {
   if (!req.user) {
     return respond(res, 401, false, 'Unauthorized');
@@ -150,7 +200,7 @@ export async function deleteBooking(req: Request, res: Response) {
   }
 
   if (existingBooking.userId !== req.user.userId) {
-    return respond(res, 403, false, 'Bookling does not belong to user');
+    return respond(res, 403, false, 'Booking does not belong to user');
   }
 
   await prisma.booking.delete({ where: { id: bookingId } });

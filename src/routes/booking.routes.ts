@@ -1,9 +1,18 @@
 import { Router } from 'express';
-import { createBooking, getBookings } from '../controllers/booking.controller';
+import {
+  createBooking,
+  getBookings,
+  deleteBooking,
+  updateBooking,
+} from '../controllers/booking.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 
 export const bookingRouter = Router();
 
-bookingRouter.post('/book', authMiddleware, createBooking);
+bookingRouter.post('/', authMiddleware, createBooking);
 
-bookingRouter.get('/bookings', authMiddleware, getBookings);
+bookingRouter.get('/', authMiddleware, getBookings);
+
+bookingRouter.put('/:bookingId', authMiddleware, updateBooking);
+
+bookingRouter.delete('/:bookingId', authMiddleware, deleteBooking);
