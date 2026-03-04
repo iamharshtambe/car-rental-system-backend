@@ -1,5 +1,5 @@
 {
-  "name": "car-rental-backend",
+  "name": "car-rental-system-backend",
   "module": "index.ts",
   "type": "module",
   "private": true,
